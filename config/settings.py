@@ -69,6 +69,19 @@ class VisualizationConfig:
     output_path: str = "output/result.avi"
 
 
+@dataclass(frozen=True)
+class ReportingConfig:
+    """Loglama, raporlama ve frame örnekleme parametreleri."""
+
+    enable_reporting: bool = True
+    enable_frame_sampling: bool = True
+    report_output_dir: str = "output"
+    sample_output_dir: str = "output/samples"
+    sample_interval: int = 10
+    save_raw_frames: bool = False
+    high_confidence_threshold: float = 1.5
+
+
 @dataclass
 class PipelineConfig:
     """Pipeline genel konfigürasyonu."""
@@ -76,5 +89,6 @@ class PipelineConfig:
     detection: DetectionConfig = field(default_factory=DetectionConfig)
     preprocess: PreprocessConfig = field(default_factory=PreprocessConfig)
     visualization: VisualizationConfig = field(default_factory=VisualizationConfig)
+    reporting: ReportingConfig = field(default_factory=ReportingConfig)
     display_window_name: str = "Yaya Tespit Sistemi"
     quit_key: str = "q"
