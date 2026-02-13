@@ -28,7 +28,8 @@ class Postprocessor:
 
     def process(self, detections: List[Detection]) -> List[Detection]:
         """
-        Tespit sonuçlarına NMS ve filtreleme uygular.
+        Tespit sonuçlarına filtreleme ve NMS uygular.
+        Sıra: güven eşiği → en-boy oranı → NMS
 
         Args:
             detections: Ham tespit listesi.
@@ -39,17 +40,49 @@ class Postprocessor:
         if not detections:
             return []
 
-        # Güven eşiği filtreleme
+        # 1. Güven eşiği filtreleme
         filtered = [
             d for d in detections
             if d.confidence >= self._config.confidence_threshold
         ]
 
+        # 2. Boyut ve en-boy oranı filtresi
+        filtered = [
+            d for d in filtered
+            if self._is_valid_detection(d)
+        ]
+
         if not filtered:
             return []
 
-        # NMS uygula
+        # 3. NMS uygula
         return self._apply_nms(filtered)
+
+    def _is_valid_detection(self, det: Detection) -> bool:
+        """
+        Tespitteki bounding box'ın yaya boyutuna ve oranına
+        uygun olup olmadığını kontrol eder.
+        """
+        # Maksimum boyut kontrolü (dev kutular sahte tespit)
+        max_w, max_h = self._config.max_detection_size
+        if det.w > max_w or det.h > max_h:
+            return False
+
+        # En-boy oranı kontrolü (yayalar dikeydir)
+        if det.w == 0:
+            return False
+        ratio = det.h / det.w
+        return self._config.min_aspect_ratio <= ratio <= self._config.max_aspect_ratio
+
+    def _is_valid_aspect_ratio(self, det: Detection) -> bool:
+        """
+        Tespitteki bounding box'ın yaya oranına uygun olup olmadığını kontrol eder.
+        Yayalar genellikle dikey yapıdadır (yükseklik/genişlik > 1.2).
+        """
+        if det.w == 0:
+            return False
+        ratio = det.h / det.w
+        return self._config.min_aspect_ratio <= ratio <= self._config.max_aspect_ratio
 
     def _apply_nms(self, detections: List[Detection]) -> List[Detection]:
         """
