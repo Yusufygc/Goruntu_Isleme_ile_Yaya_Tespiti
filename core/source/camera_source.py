@@ -1,6 +1,14 @@
 """
-Kamera tabanlı video kaynağı.
-Real-time tespit için hazır iskelet.
+Kamera Tabanlı Video Kaynağı
+==============================
+Web kamerası veya USB kameradan canlı (real-time) görüntü akışı sağlar.
+OpenCV'nin VideoCapture sınıfını kamera modunda kullanır.
+
+Kullanım:
+    source = CameraSource(camera_index=0)  # Varsayılan kamera
+    with source:
+        frame = source.read_frame()
+        # frame ile tespit yap...
 """
 
 from typing import Optional
@@ -15,21 +23,36 @@ logger = get_logger(__name__)
 
 
 class CameraSource(VideoSource):
-    """Kameradan canlı kare okuyan kaynak."""
+    """
+    Kameradan canlı kare okuyan kaynak.
+
+    NOT: Kamera FPS değeri her zaman doğru raporlanmaz —
+    varsayılan 30.0 kullanılır ve gerçek FPS, FPSCounter ile ölçülür.
+    """
 
     def __init__(self, camera_index: int = 0) -> None:
         """
         Args:
-            camera_index: Kamera cihaz indeksi. Varsayılan 0 (birincil kamera).
+            camera_index: Kamera cihaz indeksi.
+                0 = birincil kamera (dahili webcam),
+                1 = ikincil kamera (harici USB kamera), vb.
         """
         self._camera_index = camera_index
         self._capture: Optional[cv2.VideoCapture] = None
+
+        # Kamera FPS değeri — donanımdan okunamazsa 30.0 varsayılır
         self._fps_value: float = 30.0
         self._width: int = 0
         self._height: int = 0
 
     def open(self) -> None:
-        """Kamerayı açar."""
+        """
+        Kamerayı açar ve çözünürlük bilgilerini okur.
+
+        Raises:
+            IOError: Kamera açılamazsa (bağlı değil, başka uygulama kullanıyor vb.).
+        """
+        # camera_index ile kamera cihazını aç
         self._capture = cv2.VideoCapture(self._camera_index)
 
         if not self._capture.isOpened():
@@ -38,6 +61,7 @@ class CameraSource(VideoSource):
                 "Kameranın bağlı ve kullanılabilir olduğundan emin olun."
             )
 
+        # FPS değerini oku — bazı kameralar 0 döndürür, bu durumda 30.0 kullan
         self._fps_value = self._capture.get(cv2.CAP_PROP_FPS) or 30.0
         self._width = int(self._capture.get(cv2.CAP_PROP_FRAME_WIDTH))
         self._height = int(self._capture.get(cv2.CAP_PROP_FRAME_HEIGHT))
@@ -51,7 +75,12 @@ class CameraSource(VideoSource):
         )
 
     def read_frame(self) -> Optional[np.ndarray]:
-        """Kameradan bir kare okur."""
+        """
+        Kameradan bir kare okur.
+
+        Returns:
+            BGR numpy array veya okuma başarısızsa None.
+        """
         if self._capture is None or not self._capture.isOpened():
             return None
 
@@ -59,19 +88,22 @@ class CameraSource(VideoSource):
         return frame if ret else None
 
     def release(self) -> None:
-        """Kamerayı serbest bırakır."""
+        """Kamerayı serbest bırakır ve kaynakları temizler."""
         if self._capture is not None:
             self._capture.release()
             self._capture = None
             logger.info("Kamera kapatıldı (index: %d)", self._camera_index)
 
     def is_opened(self) -> bool:
+        """Kameranın açık olup olmadığını döndürür."""
         return self._capture is not None and self._capture.isOpened()
 
     @property
     def fps(self) -> float:
+        """Kamera FPS değerini döndürür (donanım raporu veya 30.0 varsayılan)."""
         return self._fps_value
 
     @property
     def frame_size(self) -> tuple[int, int]:
+        """(genişlik, yükseklik) tuple'ı olarak kamera çözünürlüğünü döndürür."""
         return (self._width, self._height)
