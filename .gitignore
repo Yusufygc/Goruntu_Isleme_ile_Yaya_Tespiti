@@ -1,0 +1,22 @@
+# Virtual Environment
+venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+
+# Output
+output/
+
+# Input videos (büyük dosyalar)
+input/*.mp4
+input/*.avi
+input/*.mkv
+
+# IDE
+.vscode/
+.idea/
+
+/documents
+/output
